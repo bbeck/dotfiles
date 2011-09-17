@@ -1,9 +1,9 @@
 = Brandon's Dot Files
 These are the dotfiles I use to setup a system the way I like it.  These are copied
-shamelessly from {Ryan Bates}[http://www.github.com/ryanb/dotfiles].
+shamelessly from {Ryan Bates}[http://www.github.com/ryanb/dotfiles] and are specific
+to bash.
 
 == Installation
   git clone git://github.com/bbeck/dotfiles.git ~/.dotfiles
   cd ~/.dotfiles
   rake install
-
