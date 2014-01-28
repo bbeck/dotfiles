@@ -1,0 +1,16 @@
+Host *
+  User bbeck
+  ServerAliveInterval 60
+
+Host *.nexus.bazaarvoice.com
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  ForwardAgent yes
+
+Host *.nexus
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  ForwardAgent yes
+  LogLevel quiet
+  ProxyCommand bash -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardAgent=yes -o LogLevel=quiet bastion$[${RANDOM}%%2 +1].$(echo "%h" | rev | cut -f 1-3 -d. | rev).bazaarvoice.com nc $(echo "%h" | rev | cut -f 4- -d. | rev) %p'
+
