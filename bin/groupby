@@ -1,0 +1,228 @@
+#!/usr/bin/env python
+import copy
+import functools
+import sys
+from decimal import Decimal
+from itertools import chain, count, izip
+
+
+class aggregation(object):
+  aggregations_by_name = {}
+
+  def __init__(self, name, type=None, default=None, help=''):
+    self.name = name
+    self.type = type
+    self.default = default
+    self.help = help
+
+  def __call__(self, fn):
+    @functools.wraps(fn)
+    def wrapper(state, value):
+      if (self.type is not None):
+        value = self.type(value)
+      if (state is None):
+        if self.default is None:
+          return value
+        elif callable(self.default):
+          state = self.default()
+        else:
+          state = copy.copy(self.default)
+      return fn(state, value)
+
+    wrapper.__name__ = self.name
+    wrapper.help = self.help
+    aggregation.aggregations_by_name[self.name] = wrapper
+    return wrapper
+
+  @staticmethod
+  def get_aggregation(name):
+    return aggregation.aggregations_by_name[name]
+
+  @staticmethod
+  def get_aggregations():
+    return sorted(aggregation.aggregations_by_name.items())
+
+
+@aggregation('first',
+             help='The first piece of data from a column in a group.')
+def _first(state, value):
+  return state
+
+
+@aggregation('last',
+             help='The last piece of data from a column in a group.')
+def _last(state, value):
+  return value
+
+
+@aggregation('count', default=0,
+             help='The count of records in a group.')
+def _count(state, value):
+  return state + 1
+
+
+@aggregation('min', type=Decimal,
+             help='The minimal value of a column in a group.')
+def _min(state, value):
+  return min(state, value)
+
+
+@aggregation('max', type=Decimal,
+             help='The maximal value of a column in a group.')
+def _max(state, value):
+  return max(state, value)
+
+
+@aggregation('sum', type=Decimal,
+             help='The sum of all values of a column in a group.')
+def _sum(state, value):
+  return (state + value)
+
+
+class AvgData(object):
+  def __init__(self):
+    self.num = self.den = 0
+
+  def add(self, num, den):
+    self.num += num
+    self.den += den
+    return self
+
+  def __str__(self):
+    prec = len(str(self.num).split('.')[1]) if '.' in str(self.num) else 0
+    fmt = "%%.%if" % prec
+    return fmt % float(self.num/self.den)
+
+
+@aggregation('avg', type=Decimal, default=AvgData,
+             help='The average value of a column in a group.')
+def _avg(state, value):
+  return state.add(value, 1)
+
+
+@aggregation('mean', type=Decimal, default=AvgData,
+             help='The mean value of a column in a group (same as avg).')
+def _mean(state, value):
+  return state.add(value, 1)
+
+
+class DrawdownData(object):
+  def __init__(self):
+    self.best = None
+    self.drawdown = 0
+
+  def add(self, value):
+    self.best = max(self.best, value)
+    self.drawdown = max(self.drawdown, self.best - value)
+    return self
+
+  def __str__(self):
+    return str(self.drawdown)
+
+
+@aggregation('drawdown', type=Decimal, default=DrawdownData,
+             help='The drawdown of a column in a group.')
+def _drawdown(state, value):
+  return state.add(value)
+
+
+def get_key_function(ids):
+  return lambda cols: tuple(cols[id-1] for id in ids)
+
+
+def get_aggregation_functions(specs):
+  funcs = []
+  for spec in specs:
+    name, col = spec.split(':')[0:2]
+    agg, col = aggregation.get_aggregation(name), int(col)
+    funcs.append(lambda state, cols, agg=agg, col=col: agg(state, cols[col-1]))
+
+  return funcs
+
+
+def get_output_functions(specs):
+  funcs = []
+  for spec in specs:
+    pieces = spec.split(':')
+    if len(pieces) > 2:
+      funcs.append(lambda x: pieces[2] % x)
+    else:
+      funcs.append(lambda x: str(x))
+
+  return funcs
+
+
+def main(options, args):
+  key_func = get_key_function(options.keys)
+  agg_funcs = get_aggregation_functions(args)
+  out_funcs = get_output_functions(args)
+
+  # Order in which the keys appeared in the data.  We save this in order to
+  # output the aggregated data in the order that we saw keys, this preserves a
+  # sort order of the data coming in.
+  all_keys = []
+
+  # Mapping for key to the states for the different aggregation functions in
+  # the group.
+  all_states = {}
+
+  for line in sys.stdin:
+    cols = line.split()
+    key = key_func(cols)
+
+    states = all_states.get(key)
+    if states is None:
+      all_keys.append(key)
+      states = [None for _ in agg_funcs]
+      all_states[key] = states
+
+    for (i, func, state) in izip(count(), agg_funcs, states):
+      states[i] = func(state, cols)
+
+  for key in all_keys:
+    cols = [func(col) for (func, col) in izip(out_funcs, all_states[key])]
+    print ' '.join(str(x) for x in chain(key, cols))
+
+
+if __name__ == '__main__':
+  from errno import EPIPE
+  from optparse import OptionParser
+
+  desc = r"""
+Groups and aggregates data read from standard input.  This script acts like the
+'group by' statement in a SQL query.  Data within a group can be aggregated
+using the following aggregation functions:
+
+"""
+
+  for (name, agg) in aggregation.get_aggregations():
+    desc += "  %-10s %s\n" % (name, agg.help)
+
+  desc += r"""
+Examples:
+  groupby -k1 -k2 -k3 sum:4 count:5
+  groupby -k1 -k2 sum:4:%3f
+"""
+
+  usage = "Usage: %prog [options] func:col:fmt [func:col:fmt...]"
+  parser = OptionParser(usage=usage + '\n\n' + desc.strip())
+  parser.add_option('-k', '--key',
+                    dest='keys', action='append', type='int', metavar='KEY',
+                    help='Field to use as part of a row key. '
+                         'Can be specified multiple times.')
+
+  (options, args) = parser.parse_args()
+  if not options.keys:
+    options.keys = [1]
+
+  if len(args) == 0:
+    parser.error('Missing aggregation function(s)')
+
+  try:
+    main(options, args)
+  except KeyboardInterrupt:
+    # User requested the program to exit
+    pass
+  except IOError, e:
+    if e.errno != EPIPE:
+      raise
