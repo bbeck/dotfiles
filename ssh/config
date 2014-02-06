@@ -1,13 +1,19 @@
 Host *
-  User bbeck
   ServerAliveInterval 60
 
+Host desktop
+  User brandon.beck
+  HostName 10.200.12.45
+  ForwardAgent yes
+
 Host *.nexus.bazaarvoice.com
+  User bbeck
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
   ForwardAgent yes
 
 Host *.nexus
+  User bbeck
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
   ForwardAgent yes
