@@ -3,7 +3,7 @@ Host *
 
 Host desktop
   User brandon.beck
-  HostName 10.200.12.45
+  HostName 10.200.12.35
   ForwardAgent yes
 
 Host *.nexus.bazaarvoice.com
@@ -11,6 +11,7 @@ Host *.nexus.bazaarvoice.com
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
   ForwardAgent yes
+  LogLevel quiet
 
 Host *.nexus
   User bbeck
