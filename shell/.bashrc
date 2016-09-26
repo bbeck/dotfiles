@@ -49,6 +49,7 @@ export LESS_TERMCAP_us=$'\e[04;38;5;146m' # begin underline
 ## Python virtual environments
 ##
 
+export WORKON_HOME="${HOME}/.virtualenvs"
 if [[ -e /usr/local/bin/virtualenvwrapper.sh ]]; then
  source /usr/local/bin/virtualenvwrapper.sh
 fi
