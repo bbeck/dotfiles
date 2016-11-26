@@ -35,6 +35,9 @@ export PROMPT_COMMAND="history -a; history -c; history -r; $PROMPT_COMMAND"
 ## Colors
 ##
 
+# Enable colors in bash
+export CLICOLOR=1
+
 # Highlighting inside manpages and elsewhere.
 export LESS_TERMCAP_mb=$'\e[01;31m'       # begin blinking
 export LESS_TERMCAP_md=$'\e[01;38;5;74m'  # begin bold
