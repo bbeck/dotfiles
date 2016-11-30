@@ -83,3 +83,12 @@ fi
 if [ -f "$(brew --prefix)/etc/bash_completion.d/git-completion.bash" ]; then
   source "$(brew --prefix)/etc/bash_completion.d/git-completion.bash"
 fi
+
+
+##
+## SSH keys
+##
+
+for key in ${HOME}/.ssh/*id_rsa; do
+  ssh-add -K "${key}" 2>/dev/null
+done
