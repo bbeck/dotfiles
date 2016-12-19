@@ -2,7 +2,15 @@
 ## Prompt
 ##
 
-export PS1="\[\033[36m\]\w \[\033[37m\]➜\[\033[0m\] "
+function _prompt_command() {
+  local VIRTUAL_ENV_PART=""
+  if [[ -n "$VIRTUAL_ENV" ]]; then
+    VIRTUAL_ENV_PART="(\[\033[36m\]${VIRTUAL_ENV##*/}\[\033[0m\]) "
+  fi
+
+  PS1="\[\033[0m\]${VIRTUAL_ENV_PART}\[\033[36m\]\w \[\033[37m\]➜\[\033[0m\] "
+}
+export PROMPT_COMMAND="_prompt_command"
 
 
 ##
