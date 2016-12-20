@@ -74,6 +74,14 @@ fi
 
 
 ##
+## autoenv environmeents
+##
+if [[ -f "$(brew --prefix autoenv)/activate.sh" ]]; then
+  source "$(brew --prefix autoenv)/activate.sh"
+fi
+
+
+##
 ## Completion
 ##
 
