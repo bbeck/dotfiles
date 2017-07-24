@@ -76,6 +76,7 @@ fi
 ##
 ## autoenv environmeents
 ##
+
 if [[ -f "$(brew --prefix autoenv)/activate.sh" ]]; then
   source "$(brew --prefix autoenv)/activate.sh"
 fi
@@ -105,6 +106,4 @@ fi
 ## SSH keys
 ##
 
-for key in ${HOME}/.ssh/*id_rsa; do
-  ssh-add -K "${key}" 2>/dev/null
-done
+ssh-add -K ${HOME}/.ssh/*id_rsa 2>/dev/null
