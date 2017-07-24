@@ -74,15 +74,6 @@ fi
 
 
 ##
-## autoenv environmeents
-##
-
-if [[ -f "$(brew --prefix autoenv)/activate.sh" ]]; then
-  source "$(brew --prefix autoenv)/activate.sh"
-fi
-
-
-##
 ## Completion
 ##
 
@@ -107,3 +98,12 @@ fi
 ##
 
 ssh-add -K ${HOME}/.ssh/*id_rsa 2>/dev/null
+
+
+##
+## direnv environments
+##
+
+if which direnv >/dev/null; then
+  eval "$(direnv hook bash)"
+fi
