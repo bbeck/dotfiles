@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# The temporary file where we'll store the piped in data.
+DATA="$(mktemp .plot-XXXXX)"
+
+# Clean up after ourselves when the script exits.
+function finish() {
+  rm -rf "${DATA}"
+}
+trap finish EXIT
+
+# Save the inputted data to the temporary data file.
+cat > "${DATA}"
+
+# Determine the "script" to pass into gnuplot.
+ARGS="set terminal png; plot ${*//using/"${DATA}" using}"
+
+# Create the plot leveraging a docker container.
+docker run        \
+  --interactive   \
+  --rm            \
+  -v $(pwd):/data \
+  -w /data        \
+  haggaie/gnuplot -e "${ARGS}" 2> >(grep -v "^Could not find/open font")
