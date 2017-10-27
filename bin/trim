@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o nounset
+
+awk -v TRIM="${1}" '
+  NR > TRIM {
+    print BUFFER[NR % TRIM]
+  }
+
+  {
+    BUFFER[NR % TRIM] = $0
+  }
+'
