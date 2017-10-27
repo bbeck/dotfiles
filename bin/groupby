@@ -88,6 +88,9 @@ class AvgData(object):
     self.den += den
     return self
 
+  def __float__(self):
+    return float(self.num)/float(self.den)
+
   def __str__(self):
     prec = len(str(self.num).split('.')[1]) if '.' in str(self.num) else 0
     fmt = "%%.%if" % prec
