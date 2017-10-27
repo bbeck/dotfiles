@@ -20,6 +20,10 @@ export PROMPT_COMMAND="_prompt_command"
 # Include bin directory in path.
 export PATH="${HOME}/src/dotfiles/bin:${PATH}"
 
+if [[ -e "${HOME}/.iterm2" ]]; then
+  export PATH="${HOME}/.iterm2:${PATH}"
+fi
+
 
 ##
 ## History
