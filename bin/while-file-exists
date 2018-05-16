@@ -1,0 +1,97 @@
+#!/usr/bin/env gorun
+package main
+
+import (
+	"fmt"
+	"github.com/spf13/cobra"
+	"io"
+	"os"
+	"os/exec"
+	"time"
+)
+
+var RootCmd = &cobra.Command{
+	Run:  run,
+	Args: cobra.MinimumNArgs(2),
+}
+
+func main() {
+	if err := RootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func run(c *cobra.Command, args []string) {
+	filename := args[0]
+	if !exists(filename) {
+		os.Exit(1)
+	}
+
+	cmd := exec.Command(args[1], args[2:]...)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to open stdout pipe: %v\n", err)
+		os.Exit(2)
+	}
+	go drain(stdout, os.Stdout)
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to open stderr pipe: %v\n", err)
+		os.Exit(2)
+	}
+	go drain(stderr, os.Stderr)
+
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to launch command '%s': %v\n", args[1], err)
+		os.Exit(2)
+	}
+
+	// Monitor the process in the background waiting for it to terminate.  When
+	// it does notify by closing a channel.
+	done := make(chan interface{})
+	go func() {
+		cmd.Wait()
+		close(done)
+	}()
+
+	// Loop periodically checking for the process to terminate or the file to
+	// be removed.
+loop:
+	for {
+		select {
+		case <-time.After(time.Second / 5):
+			if !exists(filename) {
+				if err := cmd.Process.Kill(); err != nil {
+					fmt.Fprintf(os.Stderr, "Unable to kill process: %v\n", err)
+				}
+				break loop
+			}
+		case <-done:
+			break loop
+		}
+	}
+}
+
+func exists(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil
+}
+
+// Drain the contents of a reader to a file.  This method will keep reading
+// from the reader until it returns EOF (or another error).
+func drain(in io.Reader, out *os.File) {
+	buf := make([]byte, 1024)
+	for {
+		n, err := in.Read(buf)
+		if n > 0 {
+			fmt.Fprintf(out, "%s", buf[:n])
+		}
+
+		if err != nil {
+			break
+		}
+	}
+}
